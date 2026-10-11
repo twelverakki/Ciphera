@@ -294,17 +294,18 @@ export function Sha3SqueezeContainerStage({ currentStep = 20, inputText, speed, 
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45 / speed, ease: [0.16, 1, 0.3, 1] }}
-        className="flex flex-col gap-2 p-3 sm:p-3.5 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-300 w-full shadow-inner relative overflow-visible"
+        className="flex flex-col gap-1.5 sm:gap-2 p-2 sm:p-3.5 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-300 w-full shadow-inner relative overflow-visible"
       >
         {lanes.map((lane) => {
           const isFilled = fillProgress > lane.idx;
 
           return (
-            <div key={`row-${lane.idx}`} className="flex items-center gap-2 w-full">
+            <div key={`row-${lane.idx}`} className="flex items-center gap-1.5 sm:gap-2 w-full">
               {/* LABEL LANE INDEX DI SEBELAH KIRI */}
-              <div className={`w-16 sm:w-20 h-8 sm:h-9 px-1.5 rounded-xl border text-[10px] sm:text-[11px] font-mono font-black shrink-0 flex items-center justify-center gap-1.5 shadow-2xs ${lane.badgeBg}`}>
+              <div className={`w-11 xs:w-14 sm:w-20 h-8 sm:h-9 px-1 sm:px-1.5 rounded-xl border text-[9px] sm:text-[11px] font-mono font-black shrink-0 flex items-center justify-center gap-1 sm:gap-1.5 shadow-2xs ${lane.badgeBg}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${lane.dotColor}`} />
-                <span>{lane.name}</span>
+                <span className="hidden xs:inline">{lane.name}</span>
+                <span className="xs:hidden">{lane.shortName}</span>
               </div>
 
               {/* 8 KOTAK HEX KECIL & RAPI DI SEBELAH KANAN */}
@@ -371,8 +372,8 @@ export function Sha3SqueezeContainerStage({ currentStep = 20, inputText, speed, 
       {/* ======================================================= */}
       {currentStep === 21 && (
         <div className="w-full mt-7 flex flex-col items-center select-none relative overflow-visible">
-          {/* Matriks 2 Baris x 2 Kolom: Cukup Deretan Angka Hex Murni Tanpa BG */}
-          <div className="grid grid-cols-2 gap-x-6 sm:gap-x-10 gap-y-3 w-full">
+          {/* Matriks 2 Baris x 2 Kolom di desktop / 4 Baris di HP: Deretan Angka Hex Murni */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 sm:gap-x-10 gap-y-2 sm:gap-y-3 w-full">
             {lanes.map((lane) => {
               return (
                 <div

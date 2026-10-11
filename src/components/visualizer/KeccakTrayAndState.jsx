@@ -129,10 +129,10 @@ export function KeccakTrayAndState({
             }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.5 / speed, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full max-w-full overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-300 overscroll-x-contain mb-2"
+            className="w-full max-w-full sm:overflow-x-auto pb-1 sm:pb-2 sm:scrollbar-thin sm:scrollbar-thumb-slate-300 sm:overscroll-x-contain mb-1.5 sm:mb-2"
           >
-            <div className="min-w-fit mx-auto px-2 sm:px-4 flex flex-col items-center">
-              <div className="flex items-center justify-center gap-1 sm:gap-1.5 p-2 rounded-2xl bg-white border border-slate-200 shadow-xs w-auto flex-shrink-0">
+            <div className="w-full sm:min-w-fit mx-auto px-1 sm:px-4 flex flex-col items-center">
+              <div className="flex flex-wrap sm:flex-nowrap items-center justify-center gap-1 sm:gap-1.5 p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-white border border-slate-200 shadow-xs max-w-full sm:w-auto">
                 {lanes.map((lane) => {
                   const isAlreadyFlown = currentStep === 15 && currentAbsorbedLane > lane.id;
                   const isFlyingNow = currentStep === 15 && currentAbsorbedLane === lane.id;
@@ -144,7 +144,7 @@ export function KeccakTrayAndState({
                       ref={(el) => {
                         if (el) traySlotRefs.current[lane.id] = el;
                       }}
-                      className="w-[40px] h-[40px] sm:w-[44px] sm:h-[44px] rounded-xl border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center relative overflow-hidden flex-shrink-0"
+                      className="w-[34px] h-[34px] xs:w-[38px] xs:h-[38px] sm:w-[44px] sm:h-[44px] rounded-lg sm:rounded-xl border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center relative overflow-hidden flex-shrink-0"
                     >
                       {/* Balok standby menunggu giliran terbang */}
                       {isWaiting && (
@@ -157,7 +157,7 @@ export function KeccakTrayAndState({
 
                       {/* Placeholder transparan jika sudah terbang atau sedang terbang */}
                       {(isAlreadyFlown || isFlyingNow) && (
-                        <span className="font-mono text-[9px] font-bold text-slate-300 select-none">
+                        <span className="font-mono text-[8px] sm:text-[9px] font-bold text-slate-300 select-none">
                           {lane.shortName}
                         </span>
                       )}
@@ -208,9 +208,9 @@ export function KeccakTrayAndState({
       )}
 
       {/* INDIKATOR ALIRAN DARI ATAS KE WADAH KECCAK */}
-      <div className="flex flex-col items-center my-3">
-        <div className="w-0.5 h-6 bg-slate-300"></div>
-        <ArrowDown className="w-4 h-4 text-blue-600 animate-bounce" />
+      <div className="flex flex-col items-center my-1.5 sm:my-3">
+        <div className="w-0.5 h-4 sm:h-6 bg-slate-300"></div>
+        <ArrowDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 animate-bounce" />
       </div>
 
       {/* ======================================================= */}
@@ -222,7 +222,7 @@ export function KeccakTrayAndState({
         initial={{ opacity: 0, y: 25 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.55 / speed, ease: [0.16, 1, 0.3, 1] }}
-        className="grid grid-cols-5 gap-2 p-3 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-300 w-[300px] sm:w-[330px] aspect-square shadow-inner"
+        className="grid grid-cols-5 gap-1.5 sm:gap-2 p-2 sm:p-3 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-300 w-[260px] xs:w-[280px] sm:w-[330px] aspect-square shadow-inner"
       >
         {keccak5x5Slots.map((slot) => {
           const isCapacity = slot.type === 'capacity';

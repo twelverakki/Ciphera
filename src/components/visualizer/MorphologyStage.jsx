@@ -177,10 +177,10 @@ export function MorphologyStage({
                 }}
                 className={`flex items-start justify-center max-w-full w-full overflow-visible ${
                   chars.length <= 4 
-                    ? 'gap-8 sm:gap-14' 
+                    ? 'gap-3 xs:gap-6 sm:gap-14' 
                     : chars.length <= 8 
-                    ? 'gap-4 sm:gap-8' 
-                    : 'gap-2 sm:gap-3 md:gap-4'
+                    ? 'gap-2 xs:gap-4 sm:gap-8' 
+                    : 'gap-1.5 sm:gap-3 md:gap-4'
                 }`}
               >
                 {rowChars.map((c) => (
@@ -606,7 +606,7 @@ export function MorphologyStage({
           )}
 
           {/* PILAR MORFOLOGI PADDING: 1 PILAR FUSED (0x86), 2 PILAR (SISA 2), ATAU 3 PILAR (SISA > 2) */}
-          <div className="flex items-start justify-center gap-8 sm:gap-14 w-full overflow-visible">
+          <div className="flex items-start justify-center gap-3 xs:gap-6 sm:gap-14 w-full overflow-visible">
             {paddingRules.map((rule, idx) => {
               const isFlying = currentStep === 9 && stepDirection === 'forward';
               const isMerged = currentStep >= 9;

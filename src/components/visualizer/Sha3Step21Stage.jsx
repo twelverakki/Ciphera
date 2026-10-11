@@ -235,7 +235,7 @@ export function Sha3Step21Stage({
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, delay: 0.35 }}
-        className="flex items-center justify-center gap-3 sm:gap-4 mt-8 w-full"
+        className="flex flex-wrap sm:flex-nowrap items-center justify-center gap-2.5 sm:gap-4 mt-6 sm:mt-8 w-full"
       >
         <button
           onClick={onNewInput}

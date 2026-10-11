@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { ArrowDown } from 'lucide-react';
 import { soundEngine } from '../audio/soundEngine';
 import { useVisualizerPhases } from '../hooks/useVisualizerPhases';
@@ -21,6 +21,29 @@ export function VerticalFlowVisualizer() {
   const [stepDirection, setStepDirection] = useState('forward'); 
 
   const containerRef = useRef(null);
+  const mainInputRef = useRef(null);
+  const currentStepRef = useRef(currentStep);
+
+  useEffect(() => {
+    currentStepRef.current = currentStep;
+  }, [currentStep]);
+
+  // Auto-fokus input saat berada di Step 0
+  useEffect(() => {
+    if (currentStep === 0) {
+      mainInputRef.current?.focus();
+      if (mainInputRef.current?.value) {
+        mainInputRef.current?.select();
+      }
+      const timer = setTimeout(() => {
+        mainInputRef.current?.focus();
+        if (mainInputRef.current?.value) {
+          mainInputRef.current?.select();
+        }
+      }, 80);
+      return () => clearTimeout(timer);
+    }
+  }, [currentStep]);
 
   // Parse karakter kata
   const chars = useMemo(() => {
@@ -423,6 +446,14 @@ export function VerticalFlowVisualizer() {
     });
   };
 
+  const handleNewInput = () => {
+    setInputText('');
+    scrollToStep(0);
+    setTimeout(() => {
+      mainInputRef.current?.focus();
+    }, 50);
+  };
+
   const handleNext = () => {
     setCurrentStep((prev) => {
       if (prev >= maxStep) return prev;
@@ -569,16 +600,33 @@ export function VerticalFlowVisualizer() {
     };
   }, [maxStep]);
 
-  // Keyboard navigation (Aktif di seluruh step 0 s/d 21)
+  // Keyboard navigation (Aktif di seluruh step 0 s/d 22)
   useEffect(() => {
     const handleKeyDown = (e) => {
       // Jika di input kontrol floating jump step, jangan blok ketikan angka
       if (e.target.dataset?.stepJump) return;
 
+      // Jika sedang berada di Step 0 (Frame Input Plaintext)
+      if (currentStepRef.current === 0) {
+        // Jika sedang aktif di input utama kata, onKeyDown lokal input yang memproses
+        if (e.target.dataset?.mainInput) return;
+
+        // Jika fokus belum di input tetapi pengguna menekan Enter
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleNext();
+        } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          // Jika pengguna mulai mengetik huruf / karakter apapun saat di Step 0,
+          // alihkan fokus ke input agar ketikan tidak hilang atau memicu navigasi
+          mainInputRef.current?.focus();
+        }
+        return;
+      }
+
       // Jika di input kata utama, onKeyDown lokal input yang memproses
       if (e.target.dataset?.mainInput) return;
 
-      // Navigasi di seluruh langkah 0 s/d 21
+      // Navigasi di langkah 1 s/d 22
       if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'Enter' || e.key === ' ' || e.key === 'PageDown') {
         e.preventDefault();
         handleNext();
@@ -644,95 +692,91 @@ export function VerticalFlowVisualizer() {
       />
 
       <div className="w-full h-full max-w-7xl mx-auto flex flex-col items-center justify-center relative overflow-hidden">
-        <AnimatePresence mode="wait">
-          {currentStep === 0 ? (
-            /* FRAME TUNGGAL: STEP 0 (INPUT BAHAN MENTAH) */
-            <motion.section 
-              key="step-0-input-frame"
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
-              className="w-full h-full flex flex-col items-center justify-center text-center relative px-4"
+        {currentStep === 0 ? (
+          /* FRAME TUNGGAL: STEP 0 (INPUT BAHAN MENTAH) */
+          <motion.section 
+            key="step-0-input-frame"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="w-full h-full flex flex-col items-center justify-center text-center relative px-4"
+          >
+            <span className="text-[11px] font-mono uppercase tracking-widest text-slate-400 mb-3">
+              Bahan Mentah
+            </span>
+
+            <input
+              ref={(el) => {
+                mainInputRef.current = el;
+                if (el && currentStep === 0) {
+                  el.focus();
+                }
+              }}
+              data-main-input="true"
+              type="text"
+              value={inputText}
+              maxLength={135}
+              onChange={(e) => {
+                setInputText(e.target.value);
+                soundEngine.playTypingBlip();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  e.currentTarget.blur();
+                  handleNext();
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  handlePrev();
+                }
+              }}
+              placeholder="Ketik kata..."
+              className={`w-auto min-w-[180px] sm:min-w-[220px] max-w-full text-center font-mono font-black text-slate-900 placeholder:text-slate-300 placeholder:font-normal bg-transparent border-b-2 border-slate-300 focus:border-blue-600 focus:outline-none transition-all tracking-wider py-2 select-text cursor-text relative z-10 ${
+                inputText.length > 14 
+                  ? 'text-2xl sm:text-3xl md:text-4xl' 
+                  : inputText.length > 7 
+                  ? 'text-3xl sm:text-4xl md:text-5xl' 
+                  : 'text-4xl sm:text-6xl md:text-7xl'
+              }`}
+            />
+
+            {/* INDIKATOR JUMLAH KARAKTER & BIT INPUT */}
+            <div className="flex items-center gap-2 mt-4">
+              <span className="px-3 py-1 rounded-full bg-blue-50 border border-blue-200/90 text-blue-700 font-mono text-xs font-bold shadow-2xs">
+                {inputText.length} Karakter ({inputText.length * 8} Bit)
+              </span>
+            </div>
+
+            {/* Petunjuk Navigasi (Responsif: Keyboard di Desktop, Swipe Up / Ketuk di Mobile) */}
+            <span className="text-xs font-mono text-slate-400 mt-3 px-4">
+              <span className="hidden sm:inline">
+                Tekan <strong className="text-blue-600 font-bold">Enter</strong> atau <strong className="text-slate-600 font-bold">Arrow Down</strong> untuk mulai mencincang kata ini
+              </span>
+              <span className="sm:hidden">
+                Geser ke atas (<strong className="text-blue-600 font-bold">Swipe Up ↑</strong>) atau ketuk panah di bawah untuk mulai
+              </span>
+            </span>
+
+            {/* Indikator Aliran di Bawah Frame 1 (Bisa Diketuk Langsung) */}
+            <div 
+              onClick={handleNext}
+              className="absolute bottom-6 sm:bottom-8 flex flex-col items-center cursor-pointer select-none active:scale-95 transition-transform"
+              title="Lanjut ke Langkah 1"
             >
-              <span className="text-[11px] font-mono uppercase tracking-widest text-slate-400 mb-3">
-                Bahan Mentah
-              </span>
-
-              <input
-                data-main-input="true"
-                type="text"
-                value={inputText}
-                maxLength={135}
-                onChange={(e) => {
-                  setInputText(e.target.value);
-                  soundEngine.playTypingBlip();
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    e.currentTarget.blur();
-                    handleNext();
-                  } else if (e.key === 'ArrowRight' && (e.currentTarget.selectionStart === e.currentTarget.value.length || e.currentTarget.selectionStart === null)) {
-                    e.preventDefault();
-                    e.currentTarget.blur();
-                    handleNext();
-                  } else if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    handlePrev();
-                  } else if (e.key === 'ArrowLeft' && e.currentTarget.selectionStart === 0) {
-                    e.preventDefault();
-                    handlePrev();
-                  }
-                }}
-                placeholder="Ketik kata..."
-                className={`w-auto min-w-[160px] sm:min-w-[200px] max-w-full text-center font-mono font-black text-slate-900 bg-transparent border-b-2 border-slate-300 focus:border-blue-600 focus:outline-none transition-all tracking-wider py-2 ${
-                  inputText.length > 14 
-                    ? 'text-2xl sm:text-3xl md:text-4xl' 
-                    : inputText.length > 7 
-                    ? 'text-3xl sm:text-4xl md:text-5xl' 
-                    : 'text-4xl sm:text-6xl md:text-7xl'
-                }`}
-              />
-
-              {/* INDIKATOR JUMLAH KARAKTER & BIT INPUT */}
-              <div className="flex items-center gap-2 mt-4">
-                <span className="px-3 py-1 rounded-full bg-blue-50 border border-blue-200/90 text-blue-700 font-mono text-xs font-bold shadow-2xs">
-                  {inputText.length} Karakter ({inputText.length * 8} Bit)
-                </span>
-              </div>
-
-              {/* Petunjuk Navigasi (Responsif: Keyboard di Desktop, Swipe Up / Ketuk di Mobile) */}
-              <span className="text-xs font-mono text-slate-400 mt-3 px-4">
-                <span className="hidden sm:inline">
-                  Tekan <strong className="text-blue-600 font-bold">Enter</strong> atau <strong className="text-slate-600 font-bold">Arrow Down</strong> untuk mulai mencincang kata ini
-                </span>
-                <span className="sm:hidden">
-                  Geser ke atas (<strong className="text-blue-600 font-bold">Swipe Up ↑</strong>) atau ketuk panah di bawah untuk mulai
-                </span>
-              </span>
-
-              {/* Indikator Aliran di Bawah Frame 1 (Bisa Diketuk Langsung) */}
-              <div 
-                onClick={handleNext}
-                className="absolute bottom-6 sm:bottom-8 flex flex-col items-center cursor-pointer select-none active:scale-95 transition-transform"
-                title="Lanjut ke Langkah 1"
-              >
-                <span className="text-[10px] font-mono font-bold text-blue-600 mb-0.5 sm:hidden animate-pulse">Ketuk / Swipe Up</span>
-                <div className="w-0.5 h-6 sm:h-10 bg-blue-300"></div>
-                <ArrowDown className="w-4 h-4 text-blue-600 animate-bounce mt-1" />
-              </div>
-            </motion.section>
-          ) : (
-            /* FRAME TUNGGAL: STEP 1 s/d 22 (PANGGUNG VISUALIZER) */
-            <motion.section 
-              key="visualizer-stage-frame"
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.98 }}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
-              className={`w-full h-full flex flex-col items-center justify-center px-2 sm:px-4 relative overflow-hidden ${
-                chars.length > 8 ? 'py-2 sm:py-4' : 'py-4 sm:py-6'
+              <span className="text-[10px] font-mono font-bold text-blue-600 mb-0.5 sm:hidden animate-pulse">Ketuk / Swipe Up</span>
+              <div className="w-0.5 h-6 sm:h-10 bg-blue-300"></div>
+              <ArrowDown className="w-4 h-4 text-blue-600 animate-bounce mt-1" />
+            </div>
+          </motion.section>
+        ) : (
+          /* FRAME TUNGGAL: STEP 1 s/d 22 (PANGGUNG VISUALIZER) */
+          <motion.section 
+            key="visualizer-stage-frame"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+              className={`w-full h-full flex flex-col items-center justify-start sm:justify-center px-2 sm:px-4 pt-14 pb-4 sm:pt-4 sm:pb-6 relative overflow-y-auto sm:overflow-hidden ${
+                chars.length > 8 ? 'sm:py-4' : 'sm:py-6'
               }`}
             >
               {/* STEP 1 s/d 9: TAHAP MORFOLOGI HURUF, AUDIT & ATURAN PADDING */}
@@ -814,13 +858,12 @@ export function VerticalFlowVisualizer() {
                 <Sha3Step21Stage
                   inputText={inputText}
                   isMuted={isMuted}
-                  onNewInput={() => scrollToStep(0)}
+                  onNewInput={handleNewInput}
                   onBackToStep1={() => scrollToStep(1)}
                 />
               )}
             </motion.section>
           )}
-        </AnimatePresence>
       </div>
     </div>
   );

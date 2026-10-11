@@ -722,7 +722,7 @@ export function KeccakCube3D({ speed, currentStep, isMuted, inputText = '' }) {
   const isAllRound1Finished = activeOpIndex === operations.length - 1 && isFinished;
 
   return (
-    <div className="w-full flex flex-col items-center justify-center relative my-4">
+    <div className="w-full flex flex-col items-center justify-center relative my-1 sm:my-4">
       {/* HEADER TAHAP: STEP 16, STEP 17, ATAU STEP 18 */}
       {currentStep === 16 ? (
         <div className="flex flex-col items-center mb-3 text-center">
@@ -916,7 +916,7 @@ export function KeccakCube3D({ speed, currentStep, isMuted, inputText = '' }) {
       )}
 
       {/* 3D CANVAS VIEWPORT CONTAINER */}
-      <div className="w-full max-w-2xl h-[400px] sm:h-[460px] rounded-3xl bg-slate-900 border border-slate-700/60 shadow-xl relative overflow-hidden">
+      <div className="w-full max-w-2xl h-[260px] xs:h-[300px] sm:h-[460px] rounded-2xl sm:rounded-3xl bg-slate-900 border border-slate-700/60 shadow-xl relative overflow-hidden">
         {/* Glow Ambient Effect di Background */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(37,99,235,0.18)_0,transparent_70%)] pointer-events-none" />
 
