@@ -484,6 +484,80 @@ export function VerticalFlowVisualizer() {
     };
   }, [maxStep]);
 
+  // Touch Swipe Navigation untuk HP / Perangkat Layar Sentuh
+  // Swipe UP (jari geser ke atas) -> Step Berikutnya (handleNext)
+  // Swipe DOWN (jari geser ke bawah) -> Step Sebelumnya (handlePrev)
+  const touchStartY = useRef(0);
+  const touchStartX = useRef(0);
+  const lastTouchTimeRef = useRef(0);
+
+  useEffect(() => {
+    const handleTouchStart = (e) => {
+      if (e.touches && e.touches.length === 1) {
+        touchStartY.current = e.touches[0].clientY;
+        touchStartX.current = e.touches[0].clientX;
+      }
+    };
+
+    const handleTouchEnd = (e) => {
+      if (!e.changedTouches || e.changedTouches.length === 0) return;
+
+      const target = e.target;
+      // Jangan interupsi jika pengguna sedang berinteraksi dengan form input / select / button
+      if (
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'SELECT' ||
+        target?.tagName === 'BUTTON' ||
+        target?.closest('button') ||
+        target?.closest('input') ||
+        target?.closest('select') ||
+        target?.dataset?.mainInput ||
+        target?.dataset?.stepJump
+      ) {
+        return;
+      }
+
+      // Jangan interupsi jika pengguna sedang memutar kubus 3D Canvas di Step 16-19
+      if (target?.tagName === 'CANVAS') {
+        return;
+      }
+
+      // Jangan interupsi jika sentuhan berada di dalam container scroll internal morfologi
+      if (target?.closest('.scrollbar-thin')) {
+        return;
+      }
+
+      const endY = e.changedTouches[0].clientY;
+      const endX = e.changedTouches[0].clientX;
+      const deltaY = touchStartY.current - endY;
+      const deltaX = touchStartX.current - endX;
+
+      const now = Date.now();
+      if (now - lastTouchTimeRef.current < 500) return;
+
+      // Ambang batas swipe vertikal yang tegas (minimal jarak 45px dan lebih vertikal daripada horizontal)
+      if (Math.abs(deltaY) > 45 && Math.abs(deltaY) > Math.abs(deltaX) * 1.2) {
+        lastTouchTimeRef.current = now;
+        if (deltaY > 0) {
+          // Swipe UP (jari menggeser ke atas) -> Lanjut ke step berikutnya
+          handleNext();
+        } else {
+          // Swipe DOWN (jari menggeser ke bawah) -> Kembali ke step sebelumnya
+          handlePrev();
+        }
+      }
+    };
+
+    const container = containerRef.current || window;
+    container.addEventListener('touchstart', handleTouchStart, { passive: true });
+    container.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [maxStep]);
+
   // Keyboard navigation (Aktif di seluruh step 0 s/d 21)
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -612,13 +686,24 @@ export function VerticalFlowVisualizer() {
             </span>
           </div>
 
-          <span className="text-xs font-mono text-slate-400 mt-3">
-            Tekan <strong className="text-blue-600 font-bold">Enter</strong> atau <strong className="text-slate-600 font-bold">Arrow Down / Right</strong> untuk mulai mencincang kata ini
+          {/* Petunjuk Navigasi (Responsif: Keyboard di Desktop, Swipe Up / Ketuk di Mobile) */}
+          <span className="text-xs font-mono text-slate-400 mt-3 px-4">
+            <span className="hidden sm:inline">
+              Tekan <strong className="text-blue-600 font-bold">Enter</strong> atau <strong className="text-slate-600 font-bold">Arrow Down</strong> untuk mulai mencincang kata ini
+            </span>
+            <span className="sm:hidden">
+              Geser ke atas (<strong className="text-blue-600 font-bold">Swipe Up ↑</strong>) atau ketuk panah di bawah untuk mulai
+            </span>
           </span>
 
-          {/* Indikator Aliran Scroll di Bawah Frame 1 */}
-          <div className="absolute bottom-8 flex flex-col items-center">
-            <div className="w-0.5 h-10 bg-blue-300"></div>
+          {/* Indikator Aliran Scroll di Bawah Frame 1 (Bisa Diketuk Langsung) */}
+          <div 
+            onClick={handleNext}
+            className="absolute bottom-6 sm:bottom-8 flex flex-col items-center cursor-pointer select-none active:scale-95 transition-transform"
+            title="Lanjut ke Langkah 1"
+          >
+            <span className="text-[10px] font-mono font-bold text-blue-600 mb-0.5 sm:hidden animate-pulse">Ketuk / Swipe Up</span>
+            <div className="w-0.5 h-6 sm:h-10 bg-blue-300"></div>
             <ArrowDown className="w-4 h-4 text-blue-600 animate-bounce mt-1" />
           </div>
         </section>
