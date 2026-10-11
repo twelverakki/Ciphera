@@ -112,7 +112,7 @@ export function KeccakTrayAndState({
             }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.5 / speed, ease: [0.16, 1, 0.3, 1] }}
-            className="flex items-center justify-center gap-1 sm:gap-1.5 p-2 rounded-2xl bg-white border border-slate-200 shadow-xs w-auto mb-2"
+            className="w-full max-w-full overflow-x-auto flex items-center justify-start sm:justify-center gap-1 sm:gap-1.5 p-2 rounded-2xl bg-white border border-slate-200 shadow-xs mb-2 scrollbar-thin scrollbar-thumb-slate-300"
           >
             {lanes.map((lane) => {
               const isAlreadyFlown = currentStep === 15 && currentAbsorbedLane > lane.id;

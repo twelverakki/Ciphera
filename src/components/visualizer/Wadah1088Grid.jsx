@@ -177,11 +177,13 @@ export function Wadah1088Grid({
         </div>
       )}
 
-      {/* ========================================================= */}
-      {/* NAMPAN ATAS: 17 BLOCK LANE (LANE 1 - 17)                  */}
-      {/* Muncul di Step 12 Phase 2, sumber scanning di Step 13      */}
-      {/* ========================================================= */}
-      {showDualLanes && (
+      {/* Container Scroll Horizontal untuk Layar HP/Mobile (17 Kolom) */}
+      <div className="w-full max-w-full overflow-x-auto pb-2 flex flex-col items-center scrollbar-thin scrollbar-thumb-slate-300">
+        {/* ========================================================= */}
+        {/* NAMPAN ATAS: 17 BLOCK LANE (LANE 1 - 17)                  */}
+        {/* Muncul di Step 12 Phase 2, sumber scanning di Step 13      */}
+        {/* ========================================================= */}
+        {showDualLanes && (
         <motion.div
           initial={{ opacity: 0, y: -20, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -406,6 +408,7 @@ export function Wadah1088Grid({
           })}
         </motion.div>
       )}
+      </div>
     </motion.div>
   );
 }

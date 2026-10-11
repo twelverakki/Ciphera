@@ -31,10 +31,10 @@ export function FloatingControls({
   };
 
   return (
-    <div className="fixed top-4 right-6 z-50 flex items-center space-x-3 bg-white/95 backdrop-blur-md px-4 py-2 rounded-full border border-slate-200/90 shadow-md">
+    <div className="fixed top-2 sm:top-4 right-2 sm:right-6 left-2 sm:left-auto max-w-[calc(100vw-16px)] sm:max-w-none z-50 flex items-center justify-between sm:justify-start space-x-1 sm:space-x-3 bg-white/95 backdrop-blur-md px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full border border-slate-200/90 shadow-md">
       {/* BADGE PENEGASAN STEP DENGAN INPUT LANGSUNG & SELECT DROPDOWN */}
-      <div className="flex items-center gap-2 mr-1">
-        <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-600 text-white font-mono text-xs font-bold shadow-xs">
+      <div className="flex items-center gap-1 sm:gap-2 mr-0.5 sm:mr-1 min-w-0">
+        <div className="flex items-center gap-0.5 sm:gap-1 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-blue-600 text-white font-mono text-[11px] sm:text-xs font-bold shadow-xs shrink-0">
           <span className="select-none">Step</span>
           <input
             data-step-jump="true"
@@ -50,8 +50,8 @@ export function FloatingControls({
               }
             }}
             onBlur={() => commitJump(inputVal)}
-            className="w-7 text-center bg-blue-700 hover:bg-blue-800 focus:bg-white focus:text-blue-900 text-white font-black rounded px-0.5 py-0 border border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors select-all cursor-text text-xs"
-            title="Ketik nomor step (0-21) lalu Enter untuk lompat langsung"
+            className="w-6 sm:w-7 text-center bg-blue-700 hover:bg-blue-800 focus:bg-white focus:text-blue-900 text-white font-black rounded px-0.5 py-0 border border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors select-all cursor-text text-[11px] sm:text-xs"
+            title="Ketik nomor step (0-22) lalu Enter untuk lompat langsung"
           />
           <span className="text-blue-200 select-none">/{maxStep}</span>
         </div>
@@ -63,7 +63,7 @@ export function FloatingControls({
             const val = parseInt(e.target.value, 10);
             if (onJumpStep) onJumpStep(val);
           }}
-          className="text-xs font-mono text-slate-800 font-bold bg-transparent hover:bg-slate-100 py-1 px-1.5 rounded cursor-pointer border border-transparent hover:border-slate-200 focus:outline-none transition-all max-w-[200px] sm:max-w-[280px] md:max-w-[340px] truncate"
+          className="text-[11px] sm:text-xs font-mono text-slate-800 font-bold bg-transparent hover:bg-slate-100 py-0.5 sm:py-1 px-1 sm:px-1.5 rounded cursor-pointer border border-transparent hover:border-slate-200 focus:outline-none transition-all max-w-[110px] xs:max-w-[160px] sm:max-w-[260px] md:max-w-[340px] truncate"
           title="Pilih konsep langkah untuk melompat langsung"
         >
           {stepLabels.map((label, idx) => (
@@ -74,9 +74,9 @@ export function FloatingControls({
         </select>
       </div>
 
-      {/* SLIDER KECEPATAN: 0.1x sampai 2.0x */}
-      <div className="flex items-center space-x-2 border-l border-r border-slate-200 px-3">
-        <span className="text-[11px] font-mono text-slate-500 font-semibold w-9 text-right">
+      {/* SLIDER KECEPATAN: 0.1x sampai 2.0x (Sembunyi di HP kecil agar tidak sesak) */}
+      <div className="hidden sm:flex items-center space-x-1.5 sm:space-x-2 border-l border-r border-slate-200 px-2 sm:px-3 shrink-0">
+        <span className="text-[10px] sm:text-[11px] font-mono text-slate-500 font-semibold w-8 sm:w-9 text-right">
           {speed.toFixed(1)}x
         </span>
         <input
@@ -86,34 +86,36 @@ export function FloatingControls({
           step="0.1"
           value={speed}
           onChange={(e) => setSpeed(parseFloat(e.target.value))}
-          className="w-16 sm:w-20 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+          className="w-14 sm:w-20 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
           title="Atur Kecepatan Animasi (0.1x - 2.0x)"
         />
       </div>
 
-      <button
-        onClick={handlePrev}
-        disabled={currentStep === 0}
-        className="p-1 rounded-md hover:bg-slate-100 disabled:opacity-25 transition-all text-slate-700 cursor-pointer"
-        title="Ke Langkah Sebelumnya"
-      >
-        <ChevronUp className="w-4 h-4" />
-      </button>
-      <button
-        onClick={handleNext}
-        disabled={currentStep === maxStep}
-        className="p-1 rounded-md hover:bg-slate-100 disabled:opacity-25 transition-all text-slate-700 cursor-pointer"
-        title="Ke Langkah Selanjutnya"
-      >
-        <ChevronDown className="w-4 h-4" />
-      </button>
-      <button
-        onClick={toggleMute}
-        className="p-1 rounded-md hover:bg-slate-100 text-slate-600 transition-all cursor-pointer ml-1"
-        title={isMuted ? 'Nyalakan Audio' : 'Matikan Audio'}
-      >
-        {isMuted ? <VolumeX className="w-4 h-4 text-slate-400" /> : <Volume2 className="w-4 h-4 text-blue-600" />}
-      </button>
+      <div className="flex items-center space-x-0.5 sm:space-x-1 shrink-0">
+        <button
+          onClick={handlePrev}
+          disabled={currentStep === 0}
+          className="p-1 sm:p-1 rounded-md hover:bg-slate-100 disabled:opacity-25 transition-all text-slate-700 cursor-pointer"
+          title="Ke Langkah Sebelumnya"
+        >
+          <ChevronUp className="w-4 h-4" />
+        </button>
+        <button
+          onClick={handleNext}
+          disabled={currentStep === maxStep}
+          className="p-1 sm:p-1 rounded-md hover:bg-slate-100 disabled:opacity-25 transition-all text-slate-700 cursor-pointer"
+          title="Ke Langkah Selanjutnya"
+        >
+          <ChevronDown className="w-4 h-4" />
+        </button>
+        <button
+          onClick={toggleMute}
+          className="p-1 sm:p-1 rounded-md hover:bg-slate-100 text-slate-600 transition-all cursor-pointer ml-0.5 sm:ml-1"
+          title={isMuted ? 'Nyalakan Audio' : 'Matikan Audio'}
+        >
+          {isMuted ? <VolumeX className="w-4 h-4 text-slate-400" /> : <Volume2 className="w-4 h-4 text-blue-600" />}
+        </button>
+      </div>
     </div>
   );
 }

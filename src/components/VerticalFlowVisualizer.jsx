@@ -542,7 +542,7 @@ export function VerticalFlowVisualizer() {
   return (
     <div 
       ref={containerRef}
-      className="relative w-screen h-screen bg-[#f8fafc] text-slate-900 overflow-y-auto overflow-x-hidden scroll-smooth"
+      className="relative w-full h-[100dvh] min-h-screen bg-[#f8fafc] text-slate-900 overflow-y-auto overflow-x-hidden scroll-smooth"
     >
       {/* FLOATING CONTROLS POJOK */}
       <FloatingControls
@@ -596,12 +596,12 @@ export function VerticalFlowVisualizer() {
               }
             }}
             placeholder="Ketik kata..."
-            className={`w-auto min-w-[200px] max-w-full text-center font-mono font-black text-slate-900 bg-transparent border-b-2 border-slate-300 focus:border-blue-600 focus:outline-none transition-all tracking-wider py-2 ${
+            className={`w-auto min-w-[160px] sm:min-w-[200px] max-w-full text-center font-mono font-black text-slate-900 bg-transparent border-b-2 border-slate-300 focus:border-blue-600 focus:outline-none transition-all tracking-wider py-2 ${
               inputText.length > 14 
-                ? 'text-3xl sm:text-4xl' 
+                ? 'text-2xl sm:text-3xl md:text-4xl' 
                 : inputText.length > 7 
-                ? 'text-4xl sm:text-5xl' 
-                : 'text-6xl sm:text-7xl'
+                ? 'text-3xl sm:text-4xl md:text-5xl' 
+                : 'text-4xl sm:text-6xl md:text-7xl'
             }`}
           />
 
