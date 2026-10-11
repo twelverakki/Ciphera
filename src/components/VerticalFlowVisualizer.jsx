@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowDown } from 'lucide-react';
 import { soundEngine } from '../audio/soundEngine';
 import { useVisualizerPhases } from '../hooks/useVisualizerPhases';
@@ -20,8 +21,6 @@ export function VerticalFlowVisualizer() {
   const [stepDirection, setStepDirection] = useState('forward'); 
 
   const containerRef = useRef(null);
-  const inputSectionRef = useRef(null);
-  const morphStageRef = useRef(null);
 
   // Parse karakter kata
   const chars = useMemo(() => {
@@ -420,12 +419,6 @@ export function VerticalFlowVisualizer() {
       }
       setStepDirection(targetIdx > prev ? 'forward' : 'backward');
       soundEngine.playClick();
-
-      if (targetIdx === 0) {
-        inputSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } else {
-        morphStageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
       return targetIdx;
     });
   };
@@ -435,9 +428,6 @@ export function VerticalFlowVisualizer() {
       if (prev >= maxStep) return prev;
       setStepDirection('forward');
       soundEngine.playClick();
-      if (prev === 0) {
-        morphStageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
       return prev + 1;
     });
   };
@@ -447,9 +437,6 @@ export function VerticalFlowVisualizer() {
       if (prev <= 0) return prev;
       setStepDirection('backward');
       soundEngine.playClick();
-      if (prev - 1 === 0) {
-        inputSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
       return prev - 1;
     });
   };
@@ -484,7 +471,7 @@ export function VerticalFlowVisualizer() {
     };
   }, [maxStep]);
 
-  // Touch Swipe Navigation untuk HP / Perangkat Layar Sentuh
+  // Touch Swipe & Scroll Lock untuk HP / Perangkat Layar Sentuh
   // Swipe UP (jari geser ke atas) -> Step Berikutnya (handleNext)
   // Swipe DOWN (jari geser ke bawah) -> Step Sebelumnya (handlePrev)
   const touchStartY = useRef(0);
@@ -496,6 +483,28 @@ export function VerticalFlowVisualizer() {
       if (e.touches && e.touches.length === 1) {
         touchStartY.current = e.touches[0].clientY;
         touchStartX.current = e.touches[0].clientX;
+      }
+    };
+
+    const handleTouchMove = (e) => {
+      const target = e.target;
+      // Jangan kunci jika sedang fokus di input field atau button
+      if (
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'SELECT' ||
+        target?.dataset?.mainInput
+      ) {
+        return;
+      }
+
+      // Jangan kunci jika pengguna sedang menggulir nampan 17-lane horizontal atau scrollbar internal
+      if (target?.closest('.overflow-x-auto') || target?.closest('.scrollbar-thin')) {
+        return;
+      }
+
+      // Kunci scroll native di HP agar tidak terjadi pull-to-refresh atau bouncing viewport
+      if (e.cancelable) {
+        e.preventDefault();
       }
     };
 
@@ -522,8 +531,8 @@ export function VerticalFlowVisualizer() {
         return;
       }
 
-      // Jangan interupsi jika sentuhan berada di dalam container scroll internal morfologi
-      if (target?.closest('.scrollbar-thin')) {
+      // Jangan interupsi jika sentuhan berada di dalam container scroll internal morfologi / nampan horizontal
+      if (target?.closest('.scrollbar-thin') || target?.closest('.overflow-x-auto')) {
         return;
       }
 
@@ -533,10 +542,10 @@ export function VerticalFlowVisualizer() {
       const deltaX = touchStartX.current - endX;
 
       const now = Date.now();
-      if (now - lastTouchTimeRef.current < 500) return;
+      if (now - lastTouchTimeRef.current < 450) return;
 
-      // Ambang batas swipe vertikal yang tegas (minimal jarak 45px dan lebih vertikal daripada horizontal)
-      if (Math.abs(deltaY) > 45 && Math.abs(deltaY) > Math.abs(deltaX) * 1.2) {
+      // Ambang batas swipe vertikal yang tegas (minimal jarak 40px dan lebih vertikal daripada horizontal)
+      if (Math.abs(deltaY) > 40 && Math.abs(deltaY) > Math.abs(deltaX) * 1.2) {
         lastTouchTimeRef.current = now;
         if (deltaY > 0) {
           // Swipe UP (jari menggeser ke atas) -> Lanjut ke step berikutnya
@@ -550,10 +559,12 @@ export function VerticalFlowVisualizer() {
 
     const container = containerRef.current || window;
     container.addEventListener('touchstart', handleTouchStart, { passive: true });
+    container.addEventListener('touchmove', handleTouchMove, { passive: false });
     container.addEventListener('touchend', handleTouchEnd, { passive: true });
 
     return () => {
       container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
       container.removeEventListener('touchend', handleTouchEnd);
     };
   }, [maxStep]);
@@ -616,7 +627,7 @@ export function VerticalFlowVisualizer() {
   return (
     <div 
       ref={containerRef}
-      className="relative w-full h-[100dvh] min-h-screen bg-[#f8fafc] text-slate-900 overflow-y-auto overflow-x-hidden scroll-smooth"
+      className="fixed inset-0 w-full h-[100dvh] bg-[#f8fafc] text-slate-900 overflow-hidden select-none overscroll-none"
     >
       {/* FLOATING CONTROLS POJOK */}
       <FloatingControls
@@ -632,175 +643,184 @@ export function VerticalFlowVisualizer() {
         onJumpStep={scrollToStep}
       />
 
-      <div className="mx-auto flex flex-col items-center max-w-7xl w-full">
-        
-        {/* FRAME 1: INPUT KATA ASLI (STEP 0) - SETINGGI LAYAR PENUH (100vh) */}
-        <section 
-          ref={inputSectionRef} 
-          className="h-screen min-h-screen flex flex-col items-center justify-center w-full text-center relative px-4"
-        >
-          <span className="text-[11px] font-mono uppercase tracking-widest text-slate-400 mb-3">
-            Bahan Mentah
-          </span>
+      <div className="w-full h-full max-w-7xl mx-auto flex flex-col items-center justify-center relative overflow-hidden">
+        <AnimatePresence mode="wait">
+          {currentStep === 0 ? (
+            /* FRAME TUNGGAL: STEP 0 (INPUT BAHAN MENTAH) */
+            <motion.section 
+              key="step-0-input-frame"
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              className="w-full h-full flex flex-col items-center justify-center text-center relative px-4"
+            >
+              <span className="text-[11px] font-mono uppercase tracking-widest text-slate-400 mb-3">
+                Bahan Mentah
+              </span>
 
-          <input
-            data-main-input="true"
-            type="text"
-            value={inputText}
-            maxLength={135}
-            onChange={(e) => {
-              setInputText(e.target.value);
-              soundEngine.playTypingBlip();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === 'ArrowDown') {
-                e.preventDefault();
-                e.currentTarget.blur();
-                handleNext();
-              } else if (e.key === 'ArrowRight' && (e.currentTarget.selectionStart === e.currentTarget.value.length || e.currentTarget.selectionStart === null)) {
-                e.preventDefault();
-                e.currentTarget.blur();
-                handleNext();
-              } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                handlePrev();
-              } else if (e.key === 'ArrowLeft' && e.currentTarget.selectionStart === 0) {
-                e.preventDefault();
-                handlePrev();
-              }
-            }}
-            placeholder="Ketik kata..."
-            className={`w-auto min-w-[160px] sm:min-w-[200px] max-w-full text-center font-mono font-black text-slate-900 bg-transparent border-b-2 border-slate-300 focus:border-blue-600 focus:outline-none transition-all tracking-wider py-2 ${
-              inputText.length > 14 
-                ? 'text-2xl sm:text-3xl md:text-4xl' 
-                : inputText.length > 7 
-                ? 'text-3xl sm:text-4xl md:text-5xl' 
-                : 'text-4xl sm:text-6xl md:text-7xl'
-            }`}
-          />
+              <input
+                data-main-input="true"
+                type="text"
+                value={inputText}
+                maxLength={135}
+                onChange={(e) => {
+                  setInputText(e.target.value);
+                  soundEngine.playTypingBlip();
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    e.currentTarget.blur();
+                    handleNext();
+                  } else if (e.key === 'ArrowRight' && (e.currentTarget.selectionStart === e.currentTarget.value.length || e.currentTarget.selectionStart === null)) {
+                    e.preventDefault();
+                    e.currentTarget.blur();
+                    handleNext();
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    handlePrev();
+                  } else if (e.key === 'ArrowLeft' && e.currentTarget.selectionStart === 0) {
+                    e.preventDefault();
+                    handlePrev();
+                  }
+                }}
+                placeholder="Ketik kata..."
+                className={`w-auto min-w-[160px] sm:min-w-[200px] max-w-full text-center font-mono font-black text-slate-900 bg-transparent border-b-2 border-slate-300 focus:border-blue-600 focus:outline-none transition-all tracking-wider py-2 ${
+                  inputText.length > 14 
+                    ? 'text-2xl sm:text-3xl md:text-4xl' 
+                    : inputText.length > 7 
+                    ? 'text-3xl sm:text-4xl md:text-5xl' 
+                    : 'text-4xl sm:text-6xl md:text-7xl'
+                }`}
+              />
 
-          {/* INDIKATOR JUMLAH KARAKTER & BIT INPUT */}
-          <div className="flex items-center gap-2 mt-4">
-            <span className="px-3 py-1 rounded-full bg-blue-50 border border-blue-200/90 text-blue-700 font-mono text-xs font-bold shadow-2xs">
-              {inputText.length} Karakter ({inputText.length * 8} Bit)
-            </span>
-          </div>
+              {/* INDIKATOR JUMLAH KARAKTER & BIT INPUT */}
+              <div className="flex items-center gap-2 mt-4">
+                <span className="px-3 py-1 rounded-full bg-blue-50 border border-blue-200/90 text-blue-700 font-mono text-xs font-bold shadow-2xs">
+                  {inputText.length} Karakter ({inputText.length * 8} Bit)
+                </span>
+              </div>
 
-          {/* Petunjuk Navigasi (Responsif: Keyboard di Desktop, Swipe Up / Ketuk di Mobile) */}
-          <span className="text-xs font-mono text-slate-400 mt-3 px-4">
-            <span className="hidden sm:inline">
-              Tekan <strong className="text-blue-600 font-bold">Enter</strong> atau <strong className="text-slate-600 font-bold">Arrow Down</strong> untuk mulai mencincang kata ini
-            </span>
-            <span className="sm:hidden">
-              Geser ke atas (<strong className="text-blue-600 font-bold">Swipe Up ↑</strong>) atau ketuk panah di bawah untuk mulai
-            </span>
-          </span>
+              {/* Petunjuk Navigasi (Responsif: Keyboard di Desktop, Swipe Up / Ketuk di Mobile) */}
+              <span className="text-xs font-mono text-slate-400 mt-3 px-4">
+                <span className="hidden sm:inline">
+                  Tekan <strong className="text-blue-600 font-bold">Enter</strong> atau <strong className="text-slate-600 font-bold">Arrow Down</strong> untuk mulai mencincang kata ini
+                </span>
+                <span className="sm:hidden">
+                  Geser ke atas (<strong className="text-blue-600 font-bold">Swipe Up ↑</strong>) atau ketuk panah di bawah untuk mulai
+                </span>
+              </span>
 
-          {/* Indikator Aliran Scroll di Bawah Frame 1 (Bisa Diketuk Langsung) */}
-          <div 
-            onClick={handleNext}
-            className="absolute bottom-6 sm:bottom-8 flex flex-col items-center cursor-pointer select-none active:scale-95 transition-transform"
-            title="Lanjut ke Langkah 1"
-          >
-            <span className="text-[10px] font-mono font-bold text-blue-600 mb-0.5 sm:hidden animate-pulse">Ketuk / Swipe Up</span>
-            <div className="w-0.5 h-6 sm:h-10 bg-blue-300"></div>
-            <ArrowDown className="w-4 h-4 text-blue-600 animate-bounce mt-1" />
-          </div>
-        </section>
+              {/* Indikator Aliran di Bawah Frame 1 (Bisa Diketuk Langsung) */}
+              <div 
+                onClick={handleNext}
+                className="absolute bottom-6 sm:bottom-8 flex flex-col items-center cursor-pointer select-none active:scale-95 transition-transform"
+                title="Lanjut ke Langkah 1"
+              >
+                <span className="text-[10px] font-mono font-bold text-blue-600 mb-0.5 sm:hidden animate-pulse">Ketuk / Swipe Up</span>
+                <div className="w-0.5 h-6 sm:h-10 bg-blue-300"></div>
+                <ArrowDown className="w-4 h-4 text-blue-600 animate-bounce mt-1" />
+              </div>
+            </motion.section>
+          ) : (
+            /* FRAME TUNGGAL: STEP 1 s/d 22 (PANGGUNG VISUALIZER) */
+            <motion.section 
+              key="visualizer-stage-frame"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              className={`w-full h-full flex flex-col items-center justify-center px-2 sm:px-4 relative overflow-hidden ${
+                chars.length > 8 ? 'py-2 sm:py-4' : 'py-4 sm:py-6'
+              }`}
+            >
+              {/* STEP 1 s/d 9: TAHAP MORFOLOGI HURUF, AUDIT & ATURAN PADDING */}
+              <MorphologyStage
+                currentStep={currentStep}
+                speed={speed}
+                stepDirection={stepDirection}
+                chars={chars}
+                paddingRules={paddingRules}
+                lowerHexRefs={lowerHexRefs}
+                rowRefs={rowRefs}
+                scrollContainerRef={scrollContainerRef}
+                step7RuleHexRefs={step7RuleHexRefs}
+                remainingBytes={remainingBytes}
+                onToggle1080Test={handleToggle1080Test}
+                is1080Mode={is1080Mode}
+              />
 
-        {/* FRAME 2: PANGGUNG VISUALIZER (STEP 1 s/d 22) - SETINGGI LAYAR PENUH (100vh) */}
-        <section 
-          ref={morphStageRef} 
-          className={`min-h-screen flex flex-col items-center justify-center w-full px-4 relative ${
-            chars.length > 8 ? 'py-3 sm:py-5' : 'py-8'
-          }`}
-        >
-          {/* STEP 1 s/d 9: TAHAP MORFOLOGI HURUF, AUDIT & ATURAN PADDING */}
-          <MorphologyStage
-            currentStep={currentStep}
-            speed={speed}
-            stepDirection={stepDirection}
-            chars={chars}
-            paddingRules={paddingRules}
-            lowerHexRefs={lowerHexRefs}
-            rowRefs={rowRefs}
-            scrollContainerRef={scrollContainerRef}
-            step7RuleHexRefs={step7RuleHexRefs}
-            remainingBytes={remainingBytes}
-            onToggle1080Test={handleToggle1080Test}
-            is1080Mode={is1080Mode}
-          />
+              {/* STEP 5 s/d 12: NAMPAN TEMPLATE HEX PERSISTEN */}
+              <SharedHexTray
+                currentStep={currentStep}
+                speed={speed}
+                stepDirection={stepDirection}
+                chars={chars}
+                trayItems={trayItems}
+                trayRefs={trayRefs}
+                step6Offsets={step6Offsets}
+                step7Offsets={step7Offsets}
+              />
 
-          {/* STEP 5 s/d 12: NAMPAN TEMPLATE HEX PERSISTEN */}
-          <SharedHexTray
-            currentStep={currentStep}
-            speed={speed}
-            stepDirection={stepDirection}
-            chars={chars}
-            trayItems={trayItems}
-            trayRefs={trayRefs}
-            step6Offsets={step6Offsets}
-            step7Offsets={step7Offsets}
-          />
+              {/* STEP 10 s/d 13: WADAH 1088, DUAL TRAYS & SCANNING BALOK LANE */}
+              <Wadah1088Grid
+                currentStep={currentStep}
+                speed={speed}
+                stepDirection={stepDirection}
+                step11Phase={step11Phase}
+                currentScanningLane={currentScanningLane}
+                containerSlots={containerSlots}
+                offsets={offsets}
+                replayKey={replayKey}
+                slotTimings={slotTimings}
+                slotRefs={slotRefs}
+                topLaneRefs={topLaneRefs}
+                bottomLaneRefs={bottomLaneRefs}
+              />
 
-          {/* STEP 10 s/d 13: WADAH 1088, DUAL TRAYS & SCANNING BALOK LANE */}
-          <Wadah1088Grid
-            currentStep={currentStep}
-            speed={speed}
-            stepDirection={stepDirection}
-            step11Phase={step11Phase}
-            currentScanningLane={currentScanningLane}
-            containerSlots={containerSlots}
-            offsets={offsets}
-            replayKey={replayKey}
-            slotTimings={slotTimings}
-            slotRefs={slotRefs}
-            topLaneRefs={topLaneRefs}
-            bottomLaneRefs={bottomLaneRefs}
-          />
+              {/* STEP 14 & 15: NAMPAN KECCAK & INJEKSI STATE 5x5 */}
+              <KeccakTrayAndState
+                currentStep={currentStep}
+                speed={speed}
+                stepDirection={stepDirection}
+                currentAbsorbedLane={currentAbsorbedLane}
+                isAbsorptionComplete={isAbsorptionComplete}
+                keccak5x5Slots={keccak5x5Slots}
+              />
 
-          {/* STEP 14 & 15: NAMPAN KECCAK & INJEKSI STATE 5x5 */}
-          <KeccakTrayAndState
-            currentStep={currentStep}
-            speed={speed}
-            stepDirection={stepDirection}
-            currentAbsorbedLane={currentAbsorbedLane}
-            isAbsorptionComplete={isAbsorptionComplete}
-            keccak5x5Slots={keccak5x5Slots}
-          />
+              {/* STEP 16 s/d 19: TRANSFORMASI 2D KE KUBUS 3D, RONDE 1, 24 RONDE & SQUEEZING */}
+              {currentStep >= 16 && currentStep <= 19 && (
+                <KeccakCube3D
+                  currentStep={currentStep}
+                  speed={speed}
+                  isMuted={isMuted}
+                  inputText={inputText}
+                />
+              )}
 
-          {/* STEP 16 s/d 19: TRANSFORMASI 2D KE KUBUS 3D, RONDE 1, 24 RONDE & SQUEEZING */}
-          {currentStep >= 16 && currentStep <= 19 && (
-            <KeccakCube3D
-              currentStep={currentStep}
-              speed={speed}
-              isMuted={isMuted}
-              inputText={inputText}
-            />
+              {/* STEP 20 & 21: WADAH SQUEEZING 4x8 & PENAMPANG CLONE 2x2 */}
+              {(currentStep === 20 || currentStep === 21) && (
+                <Sha3SqueezeContainerStage
+                  currentStep={currentStep}
+                  inputText={inputText}
+                  speed={speed}
+                  isMuted={isMuted}
+                />
+              )}
+
+              {/* STEP 22: HASIL AKHIR & UJI AVALANCHE */}
+              {currentStep === 22 && (
+                <Sha3Step21Stage
+                  inputText={inputText}
+                  isMuted={isMuted}
+                  onNewInput={() => scrollToStep(0)}
+                  onBackToStep1={() => scrollToStep(1)}
+                />
+              )}
+            </motion.section>
           )}
-
-          {/* STEP 20 & 21: WADAH SQUEEZING 4x8 & PENAMPANG CLONE 2x2 */}
-          {(currentStep === 20 || currentStep === 21) && (
-            <Sha3SqueezeContainerStage
-              currentStep={currentStep}
-              inputText={inputText}
-              speed={speed}
-              isMuted={isMuted}
-            />
-          )}
-
-          {/* STEP 22: HASIL AKHIR & UJI AVALANCHE */}
-          {currentStep === 22 && (
-            <Sha3Step21Stage
-              inputText={inputText}
-              isMuted={isMuted}
-              onNewInput={() => scrollToStep(0)}
-              onBackToStep1={() => scrollToStep(1)}
-            />
-          )}
-
-        </section>
-
+        </AnimatePresence>
       </div>
     </div>
   );
