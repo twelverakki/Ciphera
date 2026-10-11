@@ -12,7 +12,7 @@ export function SharedHexTray({
   step6Offsets,
   step7Offsets
 }) {
-  if (currentStep < 5) return null;
+  if (currentStep < 5 || currentStep > 11) return null;
 
   const plan = useMemo(() => getStep6TimingPlan(chars, speed), [chars, speed]);
   const isHuge = trayItems.length > 24;

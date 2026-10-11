@@ -21,46 +21,62 @@ export function KeccakTrayAndState({
     bits: '64-bit'
   }));
 
+  const rootContainerRef = useRef(null);
+  const trayScrollRef = useRef(null);
   const traySlotRefs = useRef({});
   const matrixSlotRefs = useRef({});
-  const [flyOffsets, setFlyOffsets] = useState({});
+  const [activeFlyingCoords, setActiveFlyingCoords] = useState(null);
 
-  // Ukur koordinat terbang dari Nampan ke 17 slot Bitrate di Matriks 5x5
+  // Auto-scroll nampan secara halus mengikuti balok lane yang sedang terbang di Step 15 pada layar HP
   useEffect(() => {
-    if (currentStep >= 14) {
-      const updateOffsets = () => {
-        const newOffsets = {};
-        for (let i = 0; i < 17; i++) {
-          const trayEl = traySlotRefs.current[i];
-          const matrixEl = matrixSlotRefs.current[i];
-          if (trayEl && matrixEl) {
-            const trayRect = trayEl.getBoundingClientRect();
-            const matrixRect = matrixEl.getBoundingClientRect();
-            newOffsets[i] = {
-              x: matrixRect.left + matrixRect.width / 2 - (trayRect.left + trayRect.width / 2),
-              y: matrixRect.top + matrixRect.height / 2 - (trayRect.top + trayRect.height / 2)
-            };
-          }
+    if (currentStep === 15 && currentAbsorbedLane >= 0 && currentAbsorbedLane < 17) {
+      const activeSlot = traySlotRefs.current[currentAbsorbedLane];
+      const scrollEl = trayScrollRef.current;
+      if (activeSlot && scrollEl) {
+        const containerRect = scrollEl.getBoundingClientRect();
+        const slotRect = activeSlot.getBoundingClientRect();
+        if (slotRect.left < containerRect.left + 30 || slotRect.right > containerRect.right - 30) {
+          activeSlot.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         }
-        if (Object.keys(newOffsets).length > 0) {
-          setFlyOffsets(newOffsets);
-        }
-      };
-
-      const timer = setTimeout(updateOffsets, 50);
-      window.addEventListener('resize', updateOffsets);
-      return () => {
-        clearTimeout(timer);
-        window.removeEventListener('resize', updateOffsets);
-      };
+      }
     }
-  }, [currentStep]);
+  }, [currentStep, currentAbsorbedLane]);
+
+  // Ukur koordinat terbang presisi dari posisi fisik slot nampan ke matriks 5x5
+  useEffect(() => {
+    if (currentStep === 15 && currentAbsorbedLane >= 0 && currentAbsorbedLane < 17) {
+      const trayEl = traySlotRefs.current[currentAbsorbedLane];
+      const matrixEl = matrixSlotRefs.current[currentAbsorbedLane];
+      const rootEl = rootContainerRef.current;
+
+      if (trayEl && matrixEl && rootEl) {
+        const rootRect = rootEl.getBoundingClientRect();
+        const trayRect = trayEl.getBoundingClientRect();
+        const matrixRect = matrixEl.getBoundingClientRect();
+
+        setActiveFlyingCoords({
+          startX: trayRect.left - rootRect.left,
+          startY: trayRect.top - rootRect.top,
+          targetX: matrixRect.left - rootRect.left,
+          targetY: matrixRect.top - rootRect.top,
+          width: trayRect.width,
+          height: trayRect.height,
+          laneId: currentAbsorbedLane
+        });
+      }
+    } else {
+      setActiveFlyingCoords(null);
+    }
+  }, [currentStep, currentAbsorbedLane]);
 
   return (
-    <div className="w-full flex flex-col items-center justify-center relative">
+    <div 
+      ref={rootContainerRef}
+      className="w-full flex flex-col items-center justify-center relative overflow-visible"
+    >
       {/* ======================================================= */}
-      {/* HEADER SECTION: NAMPAN (STEP 13) ATAU TITLE FASE + BAR  */}
-      {/* (STEP 14 SETELAH SELESAI BERPINDAH)                     */}
+      {/* HEADER SECTION: NAMPAN (STEP 14) ATAU TITLE FASE + BAR  */}
+      {/* (STEP 15 SETELAH SELESAI BERPINDAH)                     */}
       {/* ======================================================= */}
       <AnimatePresence mode="wait">
         {isAbsorptionComplete ? (
@@ -105,6 +121,7 @@ export function KeccakTrayAndState({
           /* NAMPAN BALOK LANE (STEP 14 & SAAT PROSES TERBANG DI STEP 15) */
           <motion.div
             key="keccak-tray-header"
+            ref={trayScrollRef}
             initial={{ opacity: 0, y: 35 }}
             animate={{ 
               opacity: currentStep === 15 && currentAbsorbedLane >= 17 ? 0 : 1, 
@@ -112,66 +129,83 @@ export function KeccakTrayAndState({
             }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.5 / speed, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full max-w-full overflow-x-auto flex items-center justify-start sm:justify-center gap-1 sm:gap-1.5 p-2 rounded-2xl bg-white border border-slate-200 shadow-xs mb-2 scrollbar-thin scrollbar-thumb-slate-300"
+            className="w-full max-w-full overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-300 overscroll-x-contain mb-2"
           >
-            {lanes.map((lane) => {
-              const isAlreadyFlown = currentStep === 15 && currentAbsorbedLane > lane.id;
-              const isFlyingNow = currentStep === 15 && currentAbsorbedLane === lane.id;
-              const isWaiting = !isAlreadyFlown && !isFlyingNow;
+            <div className="min-w-fit mx-auto px-2 sm:px-4 flex flex-col items-center">
+              <div className="flex items-center justify-center gap-1 sm:gap-1.5 p-2 rounded-2xl bg-white border border-slate-200 shadow-xs w-auto flex-shrink-0">
+                {lanes.map((lane) => {
+                  const isAlreadyFlown = currentStep === 15 && currentAbsorbedLane > lane.id;
+                  const isFlyingNow = currentStep === 15 && currentAbsorbedLane === lane.id;
+                  const isWaiting = !isAlreadyFlown && !isFlyingNow;
 
-              return (
-                <div
-                  key={`top-absorbed-slot-${lane.id}`}
-                  ref={(el) => {
-                    if (el) traySlotRefs.current[lane.id] = el;
-                  }}
-                  className="w-[40px] h-[40px] sm:w-[44px] sm:h-[44px] rounded-xl border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center relative overflow-visible"
-                >
-                  {/* Balok standby menunggu giliran terbang */}
-                  {isWaiting && (
-                    <GlassLaneBlock
-                      shortName={lane.shortName}
-                      bitsLabel="64b"
-                      fillPercent={100}
-                    />
-                  )}
-
-                  {/* Balok sedang meluncur terbang menuju matriks 5x5 */}
-                  {isFlyingNow && (
-                    <motion.div
-                      initial={{ x: 0, y: 0, scale: 1 }}
-                      animate={{
-                        x: flyOffsets[lane.id]?.x ?? 0,
-                        y: flyOffsets[lane.id]?.y ?? 140,
-                        scale: [1, 1.06, 1]
+                  return (
+                    <div
+                      key={`top-absorbed-slot-${lane.id}`}
+                      ref={(el) => {
+                        if (el) traySlotRefs.current[lane.id] = el;
                       }}
-                      transition={{
-                        duration: 0.28 / speed,
-                        ease: [0.22, 1, 0.36, 1]
-                      }}
-                      className="absolute inset-0 z-50 pointer-events-none"
+                      className="w-[40px] h-[40px] sm:w-[44px] sm:h-[44px] rounded-xl border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center relative overflow-hidden flex-shrink-0"
                     >
-                      <GlassLaneBlock
-                        shortName={lane.shortName}
-                        bitsLabel="64b"
-                        fillPercent={100}
-                        className="shadow-md shadow-blue-500/25 ring-1 ring-white/80"
-                      />
-                    </motion.div>
-                  )}
+                      {/* Balok standby menunggu giliran terbang */}
+                      {isWaiting && (
+                        <GlassLaneBlock
+                          shortName={lane.shortName}
+                          bitsLabel="64b"
+                          fillPercent={100}
+                        />
+                      )}
 
-                  {/* Placeholder transparan jika sudah terbang */}
-                  {(isAlreadyFlown || isFlyingNow) && (
-                    <span className="font-mono text-[9px] font-bold text-slate-300 select-none">
-                      {lane.shortName}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
+                      {/* Placeholder transparan jika sudah terbang atau sedang terbang */}
+                      {(isAlreadyFlown || isFlyingNow) && (
+                        <span className="font-mono text-[9px] font-bold text-slate-300 select-none">
+                          {lane.shortName}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* BALOK MELUNCUR TERBANG KE MATRIKS 5x5 (DI-RENDER DI ROOT AGAR TIDAK PERNAH TERPOTONG OVERFLOW) */}
+      {currentStep === 15 && activeFlyingCoords && (
+        <motion.div
+          key={`traveling-absorbed-lane-${activeFlyingCoords.laneId}`}
+          initial={{
+            x: activeFlyingCoords.startX,
+            y: activeFlyingCoords.startY,
+            scale: 1
+          }}
+          animate={{
+            x: activeFlyingCoords.targetX,
+            y: activeFlyingCoords.targetY,
+            scale: [1, 1.06, 1]
+          }}
+          transition={{
+            duration: 0.28 / speed,
+            ease: [0.22, 1, 0.36, 1]
+          }}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: activeFlyingCoords.width || 40,
+            height: activeFlyingCoords.height || 40,
+            zIndex: 100,
+            pointerEvents: 'none'
+          }}
+        >
+          <GlassLaneBlock
+            shortName={lanes[activeFlyingCoords.laneId].shortName}
+            bitsLabel="64b"
+            fillPercent={100}
+            className="shadow-md shadow-blue-500/25 ring-1 ring-white/80"
+          />
+        </motion.div>
+      )}
 
       {/* INDIKATOR ALIRAN DARI ATAS KE WADAH KECCAK */}
       <div className="flex flex-col items-center my-3">

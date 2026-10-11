@@ -67,12 +67,9 @@ export function Wadah1088Grid({
   // Ditampilkan di Step 10 s/d 13. Di Step 14, Wadah 1088 menghilang/fade out saat nampan bawah terdorong ke atas
   if (currentStep < 10 || currentStep > 13) return null;
 
-  // Di Step 12 (sebelumnya Step 11):
-  // Phase 0: Wadah ukuran normal
-  // Phase 1+: Wadah membesar simetris ke ukuran 44px
-  // Phase 2+: Muncul 2 Nampan Block Lane (Atas & Bawah)
-  const isEnlarged = (currentStep === 12 && step11Phase >= 1) || currentStep > 12;
-  const showDualLanes = (currentStep === 12 && step11Phase >= 2) || currentStep >= 13;
+  // Di Step 12 & 13: Wadah membesar simetris ke ukuran 44px dan muncul 2 Nampan Block Lane (Atas & Bawah)
+  const isEnlarged = currentStep >= 12;
+  const showDualLanes = currentStep >= 12;
 
   // Total 17 Lanes (Lane 1 sampai Lane 17)
   const lanes = Array.from({ length: 17 }, (_, i) => ({
@@ -82,8 +79,24 @@ export function Wadah1088Grid({
     bits: '64-bit'
   }));
 
+  const gridScrollRef = useRef(null);
   const laneColRefs = useRef({});
   const [scanPositions, setScanPositions] = useState(null);
+
+  // Auto-scroll halus mengikuti lane yang sedang discan di Step 13 pada layar HP/Mobile
+  useEffect(() => {
+    if (currentStep === 13 && currentScanningLane >= 0 && currentScanningLane < 17) {
+      const colEl = laneColRefs.current[currentScanningLane];
+      const scrollEl = gridScrollRef.current;
+      if (colEl && scrollEl) {
+        const containerRect = scrollEl.getBoundingClientRect();
+        const colRect = colEl.getBoundingClientRect();
+        if (colRect.left < containerRect.left + 30 || colRect.right > containerRect.right - 30) {
+          colEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+      }
+    }
+  }, [currentStep, currentScanningLane]);
 
   // Ukur koordinat fisik lintasan scanning (Top Tray -> Row 0..7 -> Bottom Tray)
   useEffect(() => {
@@ -178,79 +191,83 @@ export function Wadah1088Grid({
       )}
 
       {/* Container Scroll Horizontal untuk Layar HP/Mobile (17 Kolom) */}
-      <div className="w-full max-w-full overflow-x-auto pb-2 flex flex-col items-center scrollbar-thin scrollbar-thumb-slate-300">
-        {/* ========================================================= */}
-        {/* NAMPAN ATAS: 17 BLOCK LANE (LANE 1 - 17)                  */}
-        {/* Muncul di Step 12 Phase 2, sumber scanning di Step 13      */}
-        {/* ========================================================= */}
-        {showDualLanes && (
-        <motion.div
-          initial={{ opacity: 0, y: -20, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.45 / speed, ease: [0.16, 1, 0.3, 1] }}
-          className="flex items-center justify-center gap-1 sm:gap-1.5 p-2 rounded-2xl bg-white border border-slate-200 shadow-xs mb-3.5 w-auto"
-        >
-          {lanes.map((lane) => {
-              const isWaiting = currentStep === 12 || (currentStep === 13 && currentScanningLane < lane.id);
+      <div 
+        ref={gridScrollRef}
+        className="w-full max-w-full overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-300 overscroll-x-contain"
+      >
+        <div className="min-w-fit mx-auto px-2 sm:px-4 flex flex-col items-center">
+          {/* ========================================================= */}
+          {/* NAMPAN ATAS: 17 BLOCK LANE (LANE 1 - 17)                  */}
+          {/* Muncul di Step 12, sumber scanning di Step 13              */}
+          {/* ========================================================= */}
+          {showDualLanes && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.45 / speed, ease: [0.16, 1, 0.3, 1] }}
+              className="flex items-center justify-center gap-1 sm:gap-1.5 p-2 rounded-2xl bg-white border border-slate-200 shadow-xs mb-3.5 w-auto flex-shrink-0"
+            >
+              {lanes.map((lane) => {
+                const isWaiting = currentStep === 12 || (currentStep === 13 && currentScanningLane < lane.id);
+
+                return (
+                  <div
+                    key={`top-lane-slot-${lane.id}`}
+                    ref={(el) => {
+                      if (el) topLaneRefs.current[lane.id] = el;
+                    }}
+                    className="w-[40px] h-[40px] sm:w-[44px] sm:h-[44px] rounded-xl border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center relative overflow-hidden flex-shrink-0"
+                  >
+                    {/* Blok kaca standby sebelum gilirannya scanning */}
+                    {isWaiting && (
+                      <GlassLaneBlock
+                        shortName={lane.shortName}
+                        bitsLabel="0b"
+                        fillPercent={0}
+                      />
+                    )}
+
+                    {/* Placeholder transparan jika sudah berangkat / selesai scan */}
+                    {!isWaiting && (
+                      <span className="font-mono text-[9px] font-bold text-slate-300 select-none">
+                        {lane.shortName}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </motion.div>
+          )}
+
+          {/* ========================================================= */}
+          {/* WADAH 1088 (17 KOLOM x 8 BARIS)                           */}
+          {/* Tampilan bersih tanpa border/ring tambahan di Step 13     */}
+          {/* ========================================================= */}
+          <motion.div 
+            layout
+            key="grid-1088-lanes"
+            transition={{ duration: 0.5 / speed, ease: [0.16, 1, 0.3, 1] }}
+            style={{ transformOrigin: 'center center' }}
+            className={`rounded-2xl flex items-start justify-center relative overflow-visible gap-1 sm:gap-1.5 flex-shrink-0 ${
+              isEnlarged
+                ? 'p-2 border border-slate-200 bg-slate-50/90 shadow-inner w-auto'
+                : 'w-full max-w-2xl p-2 sm:p-2.5 border-2 border-dashed border-slate-300 bg-slate-50 shadow-inner box-border'
+            }`}
+          >
+            {Array.from({ length: 17 }).map((_, colIdx) => {
+              const colSlots = containerSlots.slice(colIdx * 8, colIdx * 8 + 8);
+              const isColumnBeingScanned = currentStep === 13 && currentScanningLane === colIdx;
 
               return (
                 <div
-                  key={`top-lane-slot-${lane.id}`}
+                  key={`lane-col-${colIdx}`}
                   ref={(el) => {
-                    if (el) topLaneRefs.current[lane.id] = el;
+                    if (el) laneColRefs.current[colIdx] = el;
                   }}
-                  className="w-[40px] h-[40px] sm:w-[44px] sm:h-[44px] rounded-xl border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center relative overflow-hidden"
+                  className={`flex flex-col items-center relative overflow-visible ${
+                    isEnlarged ? 'w-[40px] sm:w-[44px] flex-shrink-0' : 'flex-1 min-w-0'
+                  }`}
                 >
-                  {/* Blok kaca standby sebelum gilirannya scanning */}
-                  {isWaiting && (
-                    <GlassLaneBlock
-                      shortName={lane.shortName}
-                      bitsLabel="0b"
-                      fillPercent={0}
-                    />
-                  )}
-
-                  {/* Placeholder transparan jika sudah berangkat / selesai scan */}
-                  {!isWaiting && (
-                    <span className="font-mono text-[9px] font-bold text-slate-300 select-none">
-                      {lane.shortName}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-        </motion.div>
-      )}
-
-      {/* ========================================================= */}
-      {/* WADAH 1088 (17 KOLOM x 8 BARIS)                           */}
-      {/* Tampilan bersih tanpa border/ring tambahan di Step 13     */}
-      {/* ========================================================= */}
-      <motion.div 
-        layout
-        key="grid-1088-lanes"
-        transition={{ duration: 0.5 / speed, ease: [0.16, 1, 0.3, 1] }}
-        style={{ transformOrigin: 'center center' }}
-        className={`rounded-2xl mx-auto flex items-start justify-center relative overflow-visible gap-1 sm:gap-1.5 ${
-          isEnlarged
-            ? 'p-2 border border-slate-200 bg-slate-50/90 shadow-inner w-auto'
-            : 'w-full max-w-2xl p-2 sm:p-2.5 border-2 border-dashed border-slate-300 bg-slate-50 shadow-inner box-border'
-        }`}
-      >
-        {Array.from({ length: 17 }).map((_, colIdx) => {
-          const colSlots = containerSlots.slice(colIdx * 8, colIdx * 8 + 8);
-          const isColumnBeingScanned = currentStep === 13 && currentScanningLane === colIdx;
-
-          return (
-            <div
-              key={`lane-col-${colIdx}`}
-              ref={(el) => {
-                if (el) laneColRefs.current[colIdx] = el;
-              }}
-              className={`flex flex-col items-center relative overflow-visible ${
-                isEnlarged ? 'w-auto flex-shrink-0' : 'flex-1 min-w-0'
-              }`}
-            >
               {/* 8 KOTAK HEX PER KOLOM - Bersih & alami tanpa border scanner */}
               <div className="flex flex-col items-center gap-1 sm:gap-1.5 w-full">
                 {colSlots.map((slot) => {
@@ -365,7 +382,7 @@ export function Wadah1088Grid({
           initial={{ opacity: 0, y: 20, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.45 / speed, ease: [0.16, 1, 0.3, 1] }}
-          className="flex items-center justify-center gap-1 sm:gap-1.5 p-2 rounded-2xl bg-white border border-slate-200 shadow-xs mt-3.5 w-auto"
+          className="flex items-center justify-center gap-1 sm:gap-1.5 p-2 rounded-2xl bg-white border border-slate-200 shadow-xs mt-3.5 w-auto flex-shrink-0"
         >
           {lanes.map((lane) => {
             // Sudah mendarat jika currentScanningLane > lane.id
@@ -379,7 +396,7 @@ export function Wadah1088Grid({
                 ref={(el) => {
                   if (el) bottomLaneRefs.current[lane.id] = el;
                 }}
-                className="w-[40px] h-[40px] sm:w-[44px] sm:h-[44px] rounded-xl border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center relative overflow-hidden"
+                className="w-[40px] h-[40px] sm:w-[44px] sm:h-[44px] rounded-xl border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center relative overflow-hidden flex-shrink-0"
               >
                 {/* Belum mendarat: Placeholder transparan putus-putus */}
                 {!hasLanded && (
@@ -408,6 +425,7 @@ export function Wadah1088Grid({
           })}
         </motion.div>
       )}
+        </div>
       </div>
     </motion.div>
   );
